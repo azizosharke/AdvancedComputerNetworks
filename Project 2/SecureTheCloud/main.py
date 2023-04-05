@@ -5,6 +5,9 @@ from tkinter import filedialog
 from secure_cloud_storage import SecureCloudStorage
 from user import User
 from google_auth_oauthlib.flow import InstalledAppFlow
+import socket
+import ssl
+
 
 def get_user_credentials():
     client_secret_file_path = 'user.json'
@@ -18,7 +21,7 @@ def authenticate_and_add_user():
     credentials = get_user_credentials()
     user = User(email, credentials)
     scs.add_user(user)
-    status_label.config(text=f'User {email} authenticated and added.')
+    status_label.config(text=f'User {email} authenticated and added to the group .')
 
 def browse_file():
     file_path = filedialog.askopenfilename()
@@ -26,6 +29,7 @@ def browse_file():
     file_path_entry.insert(0, file_path)
 
 def upload_file():
+    print_ssl_certificate()
     file_path = file_path_entry.get()
     encrypted_file_path = 'encrypted_' + file_path.split('/')[-1]
     user_email = email_entry.get()
@@ -37,11 +41,25 @@ def remove_user():
     status_label.config(text=f'User {email} removed.')    
 
 def download_file():
+    print_ssl_certificate()
     file_id = file_id_entry.get()
     user_email = email_entry.get()
     decrypted_file_path = 'decrypted_' + file_path_entry.get().split('/')[-1]
     scs.download_from_drive(user_email, file_id, decrypted_file_path)
     status_label.config(text=f'File downloaded and decrypted: {decrypted_file_path}')
+
+def print_ssl_certificate(filename='SSLCertificate.txt', host='www.googleapis.com', port=443):
+    context = ssl.create_default_context()
+    
+    with socket.create_connection((host, port)) as sock:
+        with context.wrap_socket(sock, server_hostname=host) as ssock:
+            cert = ssl.DER_cert_to_PEM_cert(ssock.getpeercert(binary_form=True))
+    
+    with open(filename, 'w') as f:
+        f.write(cert)
+    
+    print(f"SSL certificate written to file: {filename}")
+
 
 root = ThemedTk(theme="arc")
 root.title(' Key management system')
@@ -80,6 +98,11 @@ download_button.grid(column=0, row=6, columnspan=2, pady=10)
 
 status_label = ttk.Label(main_frame, text='Status: Ready')
 status_label.grid(column=0, row=7, columnspan=2, pady=10)
+
+print_cert_button = ttk.Button(main_frame, text='Print SSL Certificate', command=lambda: print_ssl_certificate(filename='SSLCertificate.txt'))
+print_cert_button.grid(column=0, row=9, columnspan=2, pady=10)
+
+
 
 remove_button = ttk.Button(main_frame, text='Remove User', command=remove_user)
 remove_button.grid(column=0, row=8, columnspan=2, pady=10)
